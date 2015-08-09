@@ -1,0 +1,2 @@
+# ayymaokai
+Continous screenshotting tool
