@@ -1,0 +1,6 @@
+c:\users\swirly\documents\visual studio 2013\Projects\AyyMaokai\AyyMaokai\bin\Debug\AyyMaokai.exe.config
+c:\users\swirly\documents\visual studio 2013\Projects\AyyMaokai\AyyMaokai\bin\Debug\AyyMaokai.exe
+c:\users\swirly\documents\visual studio 2013\Projects\AyyMaokai\AyyMaokai\bin\Debug\AyyMaokai.pdb
+c:\users\swirly\documents\visual studio 2013\Projects\AyyMaokai\AyyMaokai\obj\Debug\AyyMaokai.csprojResolveAssemblyReference.cache
+c:\users\swirly\documents\visual studio 2013\Projects\AyyMaokai\AyyMaokai\obj\Debug\AyyMaokai.exe
+c:\users\swirly\documents\visual studio 2013\Projects\AyyMaokai\AyyMaokai\obj\Debug\AyyMaokai.pdb
