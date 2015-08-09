@@ -4,83 +4,86 @@ using System.Drawing.Imaging;
 using System.IO;
 using System.Threading;
 using System.Windows.Forms;
+using System.Timers;
+using Timer = System.Timers.Timer;
 
-namespace AyyMaokai //TODO: shrink images in size with TruePNG
-                    //TODO: find out whether it crashes and if it does then find out why
-                    //TODO: exit handler?
+//TODO: shrink images in size with TruePNG
+//TODO: find out whether it crashes and if it does then find out why
+//TODO: exit handler?
+
+namespace AyyMaokai
 {
     class Program
     {
-        const string logfile = "log.txt";
-        const string crashesfile = "crashes.txt";
-        static readonly Mutex mutex = new Mutex(true, "I will play with my quadcopter tomorrow :D Can't wait [clutterfunk]");
+        private const string logfile = "log.txt";
+        //private const string crashesfile = "crashes.txt";
+        private static readonly Mutex mutex = new Mutex(true, "clutterfunk");
+        private static readonly TimeSpan logTimespan = TimeSpan.FromMinutes(1);
+        private static readonly TimeSpan screenshotTimespan = TimeSpan.FromMinutes(10);
 
-        static void Main()
+        public static void Main()
         {
             if (!mutex.WaitOne(TimeSpan.Zero, true))
                 return;
 
-            try
-            {
-                new Thread(Log).Start();
+            LogStuff();
 
-                Thread.Sleep(60000); //wait 1 min because u don't want screenshot of starting up windows
+            Thread.Sleep(TimeSpan.FromMinutes(1)); // we don't want screenshot of starting up windows
 
-                while (true)
-                {
-                    GetScreenShot().Save(DateTime.Now.Ticks + ".png", ImageFormat.Png);
-                    Thread.Sleep(600000); //10 min
-                }
-            }
-            catch (Exception e)
-            {
-                File.AppendAllText(crashesfile, "[" + DateTime.Now.ToShortTimeString() + " " + DateTime.Now.ToShortDateString() + "] I'VE CRASHED IN MAIN. REASON: " + e.Message + " FROM " + e.Source + "\n");
-            }
-            finally
-            {
-                File.AppendAllText(crashesfile, "[" + DateTime.Now.ToShortTimeString() + " " + DateTime.Now.ToShortDateString() + "] I'VE REACHED FINALLY BLOCK IN MAIN\n");
-            }
+            ScreenshotStuff();
         }
 
-        static void Log()
+        private static void LogStuff()
         {
-            try
-            {
-                File.AppendAllText(logfile, "\n" + DateTime.Now.Ticks + "\n" + DateTime.Now.AddSeconds(1).Ticks + "\n");
+            var logTimer = new Timer(logTimespan.TotalMilliseconds);
+            logTimer.Elapsed += logTimer_Elapsed;
 
-                while (true)
-                {
-                    Thread.Sleep(60000); //1 min
+            File.AppendAllText(logfile, "\n" + DateTime.Now.Ticks + "\n" + DateTime.Now.AddSeconds(1).Ticks + "\n");
 
-                    var lines = File.ReadAllLines(logfile);
-                    lines[lines.Length - 1] = DateTime.Now.Ticks.ToString();
-                    File.WriteAllLines(logfile, lines);
-                }
-            }
-            catch (Exception e)
-            {
-                File.AppendAllText(crashesfile, "[" + DateTime.Now.ToShortTimeString() + " " + DateTime.Now.ToShortDateString() + "] I'VE CRASHED IN LOG. REASON: " + e.Message + " FROM " + e.Source + "\n");
-            }
-            finally
-            {
-                File.AppendAllText(crashesfile, "[" + DateTime.Now.ToShortTimeString() + " " + DateTime.Now.ToShortDateString() + "] I'VE REACHED FINALLY BLOCK IN LOG\n");
-            }
-            
+            LogTick(); // start logging immediately
+            logTimer.Start();
         }
 
-        static Bitmap GetScreenShot()
+        private static void ScreenshotStuff()
         {
-            var bitmap = new Bitmap(Screen.PrimaryScreen.Bounds.Width, Screen.PrimaryScreen.Bounds.Height, PixelFormat.Format32bppArgb);
+            var screenshotTimer = new Timer(screenshotTimespan.TotalMilliseconds);
+            screenshotTimer.Elapsed += screenshotTimer_Elapsed;
 
-            try
-            {
-                using (var graphics = Graphics.FromImage(bitmap))
-                    graphics.CopyFromScreen(Screen.PrimaryScreen.Bounds.X, Screen.PrimaryScreen.Bounds.Y, 0, 0, Screen.PrimaryScreen.Bounds.Size, CopyPixelOperation.SourceCopy);
-            }
-            catch (Exception e)
-            {
-                File.AppendAllText(crashesfile, "[" + DateTime.Now.ToShortTimeString() + " " + DateTime.Now.ToShortDateString() + "] I'VE CRASHED IN GETSCREENSHOT. REASON: " + e.Message + " FROM " + e.Source + "\n");
-            }
+            ScreenshotTick(); // start screenshotting right off the bat
+            screenshotTimer.Start();
+        }
+
+        private static void LogTick()
+        {
+            var lines = File.ReadAllLines(logfile);
+            lines[lines.Length - 1] = DateTime.Now.Ticks.ToString();
+            File.WriteAllLines(logfile, lines);
+        }
+
+        private static void ScreenshotTick()
+        {
+            GetScreenshot().Save(DateTime.Now.Ticks + ".png", ImageFormat.Png);
+            Thread.Sleep(TimeSpan.FromMinutes(10));
+        }
+
+        private static void logTimer_Elapsed(object sender, ElapsedEventArgs e)
+        {
+            LogTick();
+        }
+
+        private static void screenshotTimer_Elapsed(object sender, ElapsedEventArgs e)
+        {
+            ScreenshotTick();
+        }
+
+        private static Bitmap GetScreenshot()
+        {
+            var bitmap = new Bitmap(Screen.PrimaryScreen.Bounds.Width, Screen.PrimaryScreen.Bounds.Height,
+                PixelFormat.Format32bppArgb);
+
+            using (var graphics = Graphics.FromImage(bitmap))
+                graphics.CopyFromScreen(Screen.PrimaryScreen.Bounds.X, Screen.PrimaryScreen.Bounds.Y, 0, 0,
+                    Screen.PrimaryScreen.Bounds.Size, CopyPixelOperation.SourceCopy);
 
             return bitmap;
         }
