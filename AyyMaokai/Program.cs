@@ -1,9 +1,8 @@
 ﻿using System;
-using System.Drawing;
-using System.Drawing.Imaging;
+using System.Diagnostics;
 using System.IO;
 using System.Threading;
-using System.Windows.Forms;
+using System.Threading.Tasks;
 using System.Timers;
 using Timer = System.Timers.Timer;
 
@@ -16,29 +15,52 @@ namespace AyyMaokai
     class Program
     {
         private const string logfile = "log.txt";
-        //private const string crashesfile = "crashes.txt";
-        private static readonly Mutex mutex = new Mutex(true, "clutterfunk");
-        private static readonly TimeSpan logTimespan = TimeSpan.FromMinutes(1);
-        private static readonly TimeSpan screenshotTimespan = TimeSpan.FromMinutes(10);
+        private const string screenshotFolder = "screenshots";
+        private const string screenshotToolFilename = "screenshot-cmd.exe";
+        private static readonly Mutex mutex = new Mutex(true, "riven");
+        private static readonly TimeSpan logInterval = TimeSpan.FromMinutes(1);
+        private static readonly TimeSpan screenshotInterval = TimeSpan.FromMinutes(10);
+        private static readonly Process screenshotTool = new Process
+        {
+            StartInfo =
+                {
+                    FileName = screenshotToolFilename,
+                    // Arguments = $"-o \"{DateTime.Now.Ticks}.png\"",
+                    UseShellExecute = false,
+                    CreateNoWindow = true
+                }
+        };
 
         public static void Main()
         {
             if (!mutex.WaitOne(TimeSpan.Zero, true))
+            {
                 return;
+            }
+
+            if (!File.Exists(screenshotToolFilename))
+            {
+                throw new FileNotFoundException($"{screenshotToolFilename} not found");
+            }
 
             LogStuff();
 
-            Thread.Sleep(TimeSpan.FromMinutes(1)); // we don't want screenshot of starting up windows
+            Thread.Sleep(TimeSpan.FromMinutes(1)); // we don't want a screenshot of starting up windows
 
             ScreenshotStuff();
+
+            while (true)
+            {
+                Thread.Sleep(Int32.MaxValue);
+            }
         }
 
         private static void LogStuff()
         {
-            var logTimer = new Timer(logTimespan.TotalMilliseconds);
+            var logTimer = new Timer(logInterval.TotalMilliseconds);
             logTimer.Elapsed += logTimer_Elapsed;
 
-            File.AppendAllText(logfile, "\n" + DateTime.Now.Ticks + "\n" + DateTime.Now.AddSeconds(1).Ticks + "\n");
+            File.AppendAllText(logfile, $"\n{DateTime.Now.Ticks}\n{DateTime.Now.AddSeconds(1).Ticks}\n");
 
             LogTick(); // start logging immediately
             logTimer.Start();
@@ -46,10 +68,10 @@ namespace AyyMaokai
 
         private static void ScreenshotStuff()
         {
-            var screenshotTimer = new Timer(screenshotTimespan.TotalMilliseconds);
+            var screenshotTimer = new Timer(screenshotInterval.TotalMilliseconds);
             screenshotTimer.Elapsed += screenshotTimer_Elapsed;
 
-            ScreenshotTick(); // start screenshotting right off the bat
+            ScreenshotTick();
             screenshotTimer.Start();
         }
 
@@ -62,8 +84,15 @@ namespace AyyMaokai
 
         private static void ScreenshotTick()
         {
-            GetScreenshot().Save(DateTime.Now.Ticks + ".png", ImageFormat.Png);
-            Thread.Sleep(TimeSpan.FromMinutes(10));
+            var fileName = $"{DateTime.Now.Ticks}.png";
+            screenshotTool.StartInfo.Arguments = $"-o \"{fileName}\"";
+            screenshotTool.Start();
+            screenshotTool.WaitForExit();
+
+            if (!Directory.Exists(screenshotFolder))
+                Directory.CreateDirectory(screenshotFolder);
+
+            File.Move(fileName, Path.Combine(screenshotFolder, fileName));
         }
 
         private static void logTimer_Elapsed(object sender, ElapsedEventArgs e)
@@ -74,18 +103,6 @@ namespace AyyMaokai
         private static void screenshotTimer_Elapsed(object sender, ElapsedEventArgs e)
         {
             ScreenshotTick();
-        }
-
-        private static Bitmap GetScreenshot()
-        {
-            var bitmap = new Bitmap(Screen.PrimaryScreen.Bounds.Width, Screen.PrimaryScreen.Bounds.Height,
-                PixelFormat.Format32bppArgb);
-
-            using (var graphics = Graphics.FromImage(bitmap))
-                graphics.CopyFromScreen(Screen.PrimaryScreen.Bounds.X, Screen.PrimaryScreen.Bounds.Y, 0, 0,
-                    Screen.PrimaryScreen.Bounds.Size, CopyPixelOperation.SourceCopy);
-
-            return bitmap;
         }
     }
 }
